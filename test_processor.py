@@ -37,13 +37,8 @@ def load_jmefactory(campaign, filename):
 
 class NanoProcessor(processor.ProcessorABC):
     # Define histograms
-    def __init__(
-        self#, year="2017", campaign="UL17", BDTversion="dymore", export_array=False, systematics= True,isData=True
-    ):
-        print("nothing : ",psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, "MB")        
-        # self._year = year
-        # self.systematics = systematics    
-        # self._campaign = campaign
+    def __init__(self):
+       
         self._jet_factory,self._met_factory = load_jmefactory(
                 "UL17", "mc_compile_jec.pkl.gz" 
             )
@@ -127,7 +122,7 @@ class NanoProcessor(processor.ProcessorABC):
         
 
         
-        print("load : ",psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, "MB")
+        print("load files : ",psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, "MB")
         return processor.accumulate(
             self.process_shift(update(events, collections), name)
             for collections, name in shifts
@@ -225,17 +220,17 @@ class NanoProcessor(processor.ProcessorABC):
         del leppair
         ll_cand = ak.pad_none(ll_cand, 1, axis=1)
         ll_cand = ak.packed(ll_cand)
-        # other = event_e.nearest(events.Jet)
         print("before nearest:",psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, "MB")      
         events_jet = events.Jet
         events_jet =ak.pad_none(events_jet,1,axis=1)
-        ### Place to increase 
+        ### Case 1: Union v.s. events.Jet -> memory increase a lot
         topjet1cut=ll_cand[:,0].lep1.nearest(events.Jet)
         topjet2cut=ll_cand[:,0].lep2.nearest(events.Jet)
-
-        other = events_jet[:,0].nearest(events.Jet)
         
-        print("after nearest:",psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, "MB")        
+        ### Case 2 : both are events.Jet
+        # other = events_jet[:,0].nearest(events.Jet)
+        
+        print("after nearest:",psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, "MB") 
         
         return {dataset:output}
 

@@ -27,12 +27,9 @@ if __name__ == "__main__":
             processor_instance=NanoProcessor(),
             executor=processor.iterative_executor,
             executor_args={
-                #"skipbadfiles": args.skipbadfiles,
                 "schema": processor.NanoAODSchema,
-                #"workers": args.workers,
             },
             chunksize=10000,
-            #maxchunks=args.max,
         )
    
     save(output, args.output)
