@@ -227,8 +227,15 @@ class NanoProcessor(processor.ProcessorABC):
         topjet1cut=ll_cand[:,0].lep1.nearest(events.Jet)
         topjet2cut=ll_cand[:,0].lep2.nearest(events.Jet)
         
+        ### Alternative solution
+        # topjet1cut = events.Jet[ak.argsort(events.Jet.delta_r(ll_cand[:,0].lep1), axis=1)]
+        # topjet1cut=topjet1cut[:,0]
+        # topjet2cut = events.Jet[ak.argsort(events.Jet.delta_r(ll_cand[:,0].lep2), axis=1)]
+        # topjet2cut=topjet2cut[:,0]
+
         ### Case 2 : both are events.Jet
         # other = events_jet[:,0].nearest(events.Jet)
+
         
         print("after nearest:",psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, "MB") 
         
