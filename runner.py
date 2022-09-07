@@ -9,10 +9,14 @@ import uproot
 from coffea.util import load, save
 from coffea import processor
 from test_processor import NanoProcessor
+#from hbbprocessor import HbbProcessor
 
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="hist plotter for commissioning")
+
+    args = parser.parse_args()
 
     # Execute
     sample_dict={
@@ -29,9 +33,9 @@ if __name__ == "__main__":
             executor_args={
                 "schema": processor.NanoAODSchema,
             },
-            chunksize=10000,
+            chunksize=10000000,
         )
    
-    save(output, args.output)
+    save(output,"test2.coffea")
 
     print(output)

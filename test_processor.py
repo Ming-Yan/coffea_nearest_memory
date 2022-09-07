@@ -38,17 +38,20 @@ def load_jmefactory(campaign, filename):
 class NanoProcessor(processor.ProcessorABC):
     # Define histograms
     def __init__(self):
-       
+
         self._jet_factory,self._met_factory = load_jmefactory(
                 "UL17", "mc_compile_jec.pkl.gz" 
-            )
-               
-        
+        )
+        ## Predefined dict with histogram -> the one has duplicated events
+        histdict={
+            'jetpt_pre': Hist.Hist( Hist.axis.StrCategory([], name="syst", growth=True),Hist.axis.Regular(50,0,300, name="pt", label="$m$ [GeV]"),Hist.storage.Weight())}
         self.make_output = lambda:{
                 "cutflow": processor.defaultdict_accumulator(
                     partial(processor.defaultdict_accumulator, int)
                 ),
-                'sumw': processor.defaultdict_accumulator(float),
+                'sumw': 0.,
+            'jetpt': Hist.Hist( Hist.axis.StrCategory([], name="syst", growth=True),Hist.axis.Regular(50,0,300, name="pt", label="$m$ [GeV]"),Hist.storage.Weight()), # define histogram in dict
+            **histdict
         }
     @property
     def accumulator(self):
@@ -71,8 +74,7 @@ class NanoProcessor(processor.ProcessorABC):
             ({"Jet": jets, "MET": met}, None),
         ]
         
-        if not isRealData:
-        
+        if not isRealData :
             shifts += [
                 (
                     {
@@ -135,10 +137,15 @@ class NanoProcessor(processor.ProcessorABC):
         dataset = events.metadata["dataset"]
         isRealData = not hasattr(events, "genWeight")
         selection = processor.PackedSelection()
+        weights = Weights(len(events), storeIndividual=True)
         if isRealData:
-            output["sumw"][dataset] += len(events)
+            weights.add("genweight", np.ones(len(events)))
+            output["cutflow"][dataset]["all"] = len(events)
         else:
-            output["sumw"][dataset] += ak.sum(events.genWeight / abs(events.genWeight))
+            output["cutflow"][dataset]["all"] = ak.sum(
+                events.genWeight / abs(events.genWeight)
+            )
+            weights.add("genweight", events.genWeight / abs(events.genWeight))
         
         ## Muon cuts
         # muon twiki: https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideMuonIdRun2
@@ -184,7 +191,7 @@ class NanoProcessor(processor.ProcessorABC):
             & (events.Electron.mvaFall17V2Iso_WPL == 1)
         ]
         naele = ak.count(aele.pt, axis=1)
-
+        
         selection.add("lepsel", ak.to_numpy((nele + nmu >= 2)))
 
 
@@ -223,9 +230,18 @@ class NanoProcessor(processor.ProcessorABC):
         print("before nearest:",psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, "MB")      
         events_jet = events.Jet
         events_jet =ak.pad_none(events_jet,1,axis=1)
+        if shift_name is None:
+            systematics = [None] + list(weights.variations)
+        else:
+            systematics = [shift_name]
+        for sys in systematics:
+            if sys==None:sys="nominal"
+            # Fill them in the same way
+            output['jetpt'].fill(syst=sys,pt=ak.flatten(events_jet.pt,axis=None))
+            output['jetpt_pre'].fill(syst=sys,pt=ak.flatten(events_jet.pt,axis=None))
         ### Case 1: Union v.s. events.Jet -> memory increase a lot
-        topjet1cut=ll_cand[:,0].lep1.nearest(events.Jet)
-        topjet2cut=ll_cand[:,0].lep2.nearest(events.Jet)
+        # topjet1cut=ll_cand[:,0].lep1.nearest(events.Jet)
+        # topjet2cut=ll_cand[:,0].lep2.nearest(events.Jet)
         
         ### Alternative solution
         # topjet1cut = events.Jet[ak.argsort(events.Jet.delta_r(ll_cand[:,0].lep1), axis=1)]
@@ -234,7 +250,7 @@ class NanoProcessor(processor.ProcessorABC):
         # topjet2cut=topjet2cut[:,0]
 
         ### Case 2 : both are events.Jet
-        # other = events_jet[:,0].nearest(events.Jet)
+        #other = events_jet[:,0].nearest(events.Jet)
 
         
         print("after nearest:",psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, "MB") 
